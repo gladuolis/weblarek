@@ -36,6 +36,11 @@ export interface IOrder {
   items: string[]; // массив ID товаров
 }
 
+export interface IOrderResult {
+  id: string;
+  total: number;
+}
+
 // Ответ от API для списков с пагинацией
 export interface ApiListResponse<T> {
   total: number;

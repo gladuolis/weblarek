@@ -6,7 +6,7 @@ import { BuyerModel } from './components/models/BuyerModel';
 import { apiProducts } from './utils/data';
 import { WebLarekAPI } from './components/Api/WebLarekAPI';
 import { API_URL } from './utils/constants';
-
+import { Api } from './components/base/Api'; // Добавляем импорт Api
 
 // Создаем экземпляры моделей ДО тестирования
 const productsModel = new ProductModel();
@@ -68,10 +68,12 @@ console.log('После частичного обновления email:', buyer
 buyerModel.clearData();
 console.log('После очистки:', buyerModel.getData());
 
-// 4. Тестирование API
+// 4. Тестирование API (ИСПРАВЛЕННАЯ версия)
 console.log('\n--- WebLarekAPI ---');
 
-const api = new WebLarekAPI(API_URL);
+// Создаем экземпляр Api отдельно и передаем в WebLarekAPI
+const baseApi = new Api(API_URL);
+const api = new WebLarekAPI(baseApi);
 
 // Тестируем получение товаров с сервера
 try {
@@ -79,7 +81,7 @@ try {
   const productList = await api.getProductList();
   console.log('Товары получены с сервера:', productList);
   
-  // Сохраняем в модель (теперь productsModel доступна)
+  // Сохраняем в модель
   productsModel.setItems(productList.items);
   console.log('Товары сохранены в модель. Количество:', productsModel.getItems().length);
   

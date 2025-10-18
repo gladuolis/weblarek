@@ -228,7 +228,7 @@ yarn preview
 **Назначение:** взаимодействие с сервером API для получения товаров и отправки заказов
 
 **Конструктор:**
-- `constructor(baseUrl: string, options: RequestInit = {})` - принимает базовый URL и опции запроса
+constructor(api: IApi) - принимает экземпляр класса, реализующего интерфейс IApi
 
 **Методы:**
 - `getProductList(): Promise<ApiListResponse<IProduct>>` - получает список товаров с сервера
