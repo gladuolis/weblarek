@@ -1,10 +1,16 @@
 import { IBuyer, TPayment, IValidationErrors } from '../../types';
+import { EventEmitter } from '../base/Events';
 
 export class BuyerModel {
   private _payment: TPayment | null = null;
   private _email: string = '';
   private _phone: string = '';
   private _address: string = '';
+  private events: EventEmitter;
+
+  constructor() {
+    this.events = new EventEmitter();
+  }
 
   // Сохраняет данные покупателя (частично или полностью)
   setData(data: Partial<IBuyer>): void {
@@ -12,6 +18,8 @@ export class BuyerModel {
     if (data.email !== undefined) this._email = data.email;
     if (data.phone !== undefined) this._phone = data.phone;
     if (data.address !== undefined) this._address = data.address;
+    
+    this.events.emit('buyer:changed', this.getData());
   }
 
   // Возвращает все данные покупателя
@@ -33,6 +41,7 @@ export class BuyerModel {
     this._email = '';
     this._phone = '';
     this._address = '';
+    this.events.emit('buyer:changed', null);
   }
 
   // Проверяет валидность данных и возвращает объект с ошибками
@@ -62,5 +71,10 @@ export class BuyerModel {
   isValid(): boolean {
     const errors = this.validate();
     return Object.keys(errors).length === 0;
+  }
+
+  // Метод для подписки на события
+  on(event: string, callback: (data: any) => void) {
+    this.events.on(event, callback);
   }
 }
