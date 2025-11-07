@@ -5,12 +5,26 @@ import { WebLarekAPI } from '../Api/WebLarekAPI';
 import { CatalogCard } from '../View/CatalogCard';
 import { PreviewCard } from '../View/PreviewCard';
 import { BasketView } from '../View/BasketView';
+import { BasketCard } from '../View/BasketCard'; 
 import { OrderForm } from '../View/OrderForm';
 import { ContactsForm } from '../View/ContactsForm';
 import { Modal } from '../View/Modal';
-import { IProduct, IOrder } from '../../types';
+import { SuccessMessage } from '../View/SuccessMessage';
+import { IProduct, IOrder, IOrderForm, IContactsForm } from '../../types';
+import { EventEmitter } from '../base/Events';
 
 export class AppPresenter {
+  private successMessage: SuccessMessage;
+  
+  // Кэшируем шаблоны
+  private catalogTemplate: HTMLTemplateElement;
+  private previewTemplate: HTMLTemplateElement;
+  private basketTemplate: HTMLTemplateElement;
+  private basketCardTemplate: HTMLTemplateElement;
+  private orderTemplate: HTMLTemplateElement;
+  private contactsTemplate: HTMLTemplateElement;
+  private successTemplate: HTMLTemplateElement;
+
   constructor(
     private productModel: ProductModel,
     private cartModel: CartModel,
@@ -18,26 +32,49 @@ export class AppPresenter {
     private api: WebLarekAPI,
     private modal: Modal,
     private gallery: HTMLElement,
-    private basketButton: HTMLElement
+    private basketButton: HTMLElement,
+    private events: EventEmitter
   ) {
+    this.cacheTemplates();
+    this.createSuccessMessage();
     this.init();
   }
 
+  private cacheTemplates(): void {
+    this.catalogTemplate = document.getElementById('card-catalog') as HTMLTemplateElement;
+    this.previewTemplate = document.getElementById('card-preview') as HTMLTemplateElement;
+    this.basketTemplate = document.getElementById('basket') as HTMLTemplateElement;
+    this.basketCardTemplate = document.getElementById('card-basket') as HTMLTemplateElement;
+    this.orderTemplate = document.getElementById('order') as HTMLTemplateElement;
+    this.contactsTemplate = document.getElementById('contacts') as HTMLTemplateElement;
+    this.successTemplate = document.getElementById('success') as HTMLTemplateElement;
+  }
+
+  private createSuccessMessage(): void {
+    const successElement = this.successTemplate.content.cloneNode(true) as HTMLElement;
+    this.successMessage = new SuccessMessage(
+      successElement as HTMLElement,
+      () => this.modal.close()
+    );
+  }
+
   private init() {
-    // Подписываемся на события моделей
-    this.productModel.on('products:changed', this.renderCatalog.bind(this));
-    this.cartModel.on('cart:changed', this.updateBasketCounter.bind(this));
-    
-    // Загружаем товары с сервера
-    this.loadProducts();
+    // Подписываемся на события через единый events
+    this.events.on('products:changed', this.renderCatalog.bind(this));
+    this.events.on('cart:changed', this.updateBasketCounter.bind(this));
     
     // Назначаем обработчик корзины
     this.basketButton.addEventListener('click', this.openBasket.bind(this));
+    
+    // Загружаем товары с сервера
+    this.loadProducts();
   }
 
   private async loadProducts() {
     try {
+      console.log('Loading products from API...');
       const productList = await this.api.getProductList();
+      console.log('Products loaded:', productList.items.length);
       this.productModel.setItems(productList.items);
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);
@@ -46,46 +83,69 @@ export class AppPresenter {
 
   private renderCatalog() {
     const products = this.productModel.getItems();
-    const template = document.getElementById('card-catalog') as HTMLTemplateElement;
+    console.log('=== RENDER CATALOG ===');
+    console.log('Products to render:', products.length);
+
     const cardElements: HTMLElement[] = [];
 
-    products.forEach(product => {
-      const cardElement = template.content.cloneNode(true) as HTMLElement;
-      const card = new CatalogCard(cardElement as HTMLElement, this.openProductModal.bind(this));
+    products.forEach((product, index) => {
+      console.log(`Creating card ${index}:`, product.title);
+      
+      const cardElement = this.catalogTemplate.content.cloneNode(true) as HTMLElement;
+      const card = new CatalogCard(
+        cardElement as HTMLElement, 
+        (productData) => {
+          console.log('🎯🎯🎯 ONCLICK CALLBACK! Product:', productData.title);
+          this.openProductModal(productData);
+        }
+      );
+      
       card.render(product);
       cardElements.push(cardElement as HTMLElement);
     });
 
     this.gallery.replaceChildren(...cardElements);
+    console.log('Catalog rendered');
   }
 
   private openProductModal(product: IProduct) {
+    console.log('🎪 OPEN PRODUCT MODAL for:', product.title);
+    
     this.productModel.setSelectedItem(product);
     
-    const previewTemplate = document.getElementById('card-preview') as HTMLTemplateElement;
-    const previewElement = previewTemplate.content.cloneNode(true) as HTMLElement;
-    const previewCard = new PreviewCard(previewElement as HTMLElement, this.addToBasket.bind(this));
+    const previewElement = this.previewTemplate.content.cloneNode(true) as HTMLElement;
+    const isInBasket = this.cartModel.containsItem(product.id);
     
-    previewCard.render(product);
+    const previewCard = new PreviewCard(
+      previewElement as HTMLElement, 
+      this.addToBasket.bind(this),
+      this.removeFromBasket.bind(this),
+      isInBasket
+    );
+    
+    previewCard.render(product, isInBasket);
     this.modal.setContent(previewElement);
     this.modal.open();
   }
 
   private addToBasket(product: IProduct) {
+    console.log('Adding to basket:', product.title);
     this.cartModel.addItem(product);
     this.modal.close();
   }
 
   private openBasket() {
-    const basketTemplate = document.getElementById('basket') as HTMLTemplateElement;
-    const basketElement = basketTemplate.content.cloneNode(true) as HTMLElement;
+    console.log('=== OPEN BASKET ===');
+    const items = this.cartModel.getItems();
+    console.log('Basket items:', items.length, items);
+    
+    const basketElement = this.basketTemplate.content.cloneNode(true) as HTMLElement;
     const basketView = new BasketView(
       basketElement as HTMLElement,
       this.openOrderForm.bind(this),
       this.removeFromBasket.bind(this)
     );
     
-    const items = this.cartModel.getItems();
     const total = this.cartModel.getTotalPrice();
     basketView.render(items, total);
     this.modal.setContent(basketElement);
@@ -93,42 +153,45 @@ export class AppPresenter {
   }
 
   private removeFromBasket(product: IProduct) {
+    console.log('Removing from basket:', product.title);
     this.cartModel.removeItem(product);
     
-    if (this.cartModel.getItemsCount() > 0) {
-      this.openBasket();
-    } else {
-      this.modal.close();
-    }
+    // Всегда переоткрываем корзину чтобы показать обновленное состояние
+    this.openBasket();
   }
 
   private updateBasketCounter() {
+    const count = this.cartModel.getItemsCount();
+    console.log('Updating basket counter:', count);
     const counter = document.querySelector('.header__basket-counter') as HTMLElement;
-    counter.textContent = this.cartModel.getItemsCount().toString();
+    if (counter) {
+      counter.textContent = count.toString();
+    }
   }
 
   private openOrderForm() {
-    const buyerData = this.buyerModel.getData();
+    console.log('📦 OPEN ORDER FORM called');
     
-    const orderTemplate = document.getElementById('order') as HTMLTemplateElement;
-    const orderElement = orderTemplate.content.cloneNode(true) as HTMLElement;
-    const orderForm = new OrderForm(
+    const buyerData = this.buyerModel.getData();
+    console.log('📦 Buyer data:', buyerData);
+    
+    const orderElement = this.orderTemplate.content.cloneNode(true) as HTMLElement;
+    const orderForm: IOrderForm = new OrderForm(
       orderElement as HTMLElement,
+      this.buyerModel,
       (data) => {
+        console.log('📦📦📦 ORDER FORM SUBMITTED! Data:', data);
         this.buyerModel.setData(data);
         this.openContactsForm();
       }
     );
     
-    // Устанавливаем сохраненные данные если есть
     if (buyerData) {
-      // Используем метод setData если он есть, иначе render
-      if ((orderForm as any).setData) {
-        (orderForm as any).setData(buyerData.payment, buyerData.address);
-      } else {
-        orderForm.render();
-      }
+      console.log('📦 Setting existing buyer data');
+      // УБРАН as any - теперь правильная типизация
+      orderForm.setData(buyerData.payment, buyerData.address);
     } else {
+      console.log('📦 Rendering empty form');
       orderForm.render();
     }
     
@@ -137,26 +200,24 @@ export class AppPresenter {
   }
 
   private openContactsForm() {
+    console.log('📞 OPEN CONTACTS FORM called');
+    
     const buyerData = this.buyerModel.getData();
     
-    const contactsTemplate = document.getElementById('contacts') as HTMLTemplateElement;
-    const contactsElement = contactsTemplate.content.cloneNode(true) as HTMLElement;
-    const contactsForm = new ContactsForm(
+    const contactsElement = this.contactsTemplate.content.cloneNode(true) as HTMLElement;
+    const contactsForm: IContactsForm = new ContactsForm(
       contactsElement as HTMLElement,
+      this.buyerModel,
       (contactsData) => {
+        console.log('📞📞📞 CONTACTS FORM SUBMITTED! Data:', contactsData);
         this.buyerModel.setData(contactsData);
         this.submitOrder();
       }
     );
     
-    // Устанавливаем сохраненные данные если есть
     if (buyerData) {
-      // Используем метод setData если он есть, иначе render
-      if ((contactsForm as any).setData) {
-        (contactsForm as any).setData(buyerData.email, buyerData.phone);
-      } else {
-        contactsForm.render();
-      }
+      // УБРАН as any - теперь правильная типизация
+      contactsForm.setData(buyerData.email, buyerData.phone);
     } else {
       contactsForm.render();
     }
@@ -166,6 +227,7 @@ export class AppPresenter {
   }
 
   private async submitOrder() {
+    console.log('Submitting order');
     const buyerData = this.buyerModel.getData();
     
     if (!buyerData) {
@@ -183,6 +245,7 @@ export class AppPresenter {
         items: this.cartModel.getItems().map(item => item.id)
       };
 
+      console.log('Submitting order data:', order);
       const result = await this.api.submitOrder(order);
       
       // Очищаем корзину и данные покупателя
@@ -198,16 +261,10 @@ export class AppPresenter {
   }
 
   private showSuccess(total: number) {
-    const successTemplate = document.getElementById('success') as HTMLTemplateElement;
-    const successElement = successTemplate.content.cloneNode(true) as HTMLElement;
+    console.log('Showing success message, total:', total);
     
-    const description = successElement.querySelector('.order-success__description') as HTMLElement;
-    description.textContent = `Списано ${total} синапсов`;
-    
-    const closeButton = successElement.querySelector('.order-success__close') as HTMLButtonElement;
-    closeButton.addEventListener('click', () => this.modal.close());
-    
-    this.modal.setContent(successElement);
+    this.successMessage.setTotal(total);
+    this.modal.setContent(this.successMessage.container);
     this.modal.open();
   }
 }

@@ -1,74 +1,72 @@
-import { TPayment } from '../../types';
+import { Form } from './Form';
+import { IBuyer, IOrderForm } from '../../types';
 
-export class OrderForm {
-  protected _container: HTMLElement;
-  protected _form: HTMLFormElement;
-  protected _cardButton: HTMLButtonElement;
-  protected _cashButton: HTMLButtonElement;
-  protected _addressInput: HTMLInputElement;
-  protected _submitButton: HTMLButtonElement;
-  protected _errors: HTMLElement;
+interface OrderFormData {
+  payment: string;
+  address: string;
+}
+
+export class OrderForm extends Form<OrderFormData> implements IOrderForm {
+  private _onlineButton: HTMLButtonElement;
+  private _cashButton: HTMLButtonElement;
+  private _addressInput: HTMLInputElement;
+  private _selectedPayment: string = '';
 
   constructor(
     container: HTMLElement,
-    protected onSubmit?: (data: { payment: TPayment; address: string }) => void
+    private buyerModel: any,
+    protected onSubmit?: (data: OrderFormData) => void
   ) {
-    this._container = container;
+    super(container);
     
-    // Находим элементы
-    this._form = this._container.querySelector('form') as HTMLFormElement;
-    this._cardButton = this._container.querySelector('button[name="card"]') as HTMLButtonElement;
-    this._cashButton = this._container.querySelector('button[name="cash"]') as HTMLButtonElement;
-    this._addressInput = this._container.querySelector('input[name="address"]') as HTMLInputElement;
-    this._submitButton = this._container.querySelector('.order__button') as HTMLButtonElement;
-    this._errors = this._container.querySelector('.form__errors') as HTMLElement;
+    this._onlineButton = this.container.querySelector('button[name="card"]') as HTMLButtonElement;
+    this._cashButton = this.container.querySelector('button[name="cash"]') as HTMLButtonElement;
+    this._addressInput = this.container.querySelector('input[name="address"]') as HTMLInputElement;
 
-    // Обработчики событий
-    this._cardButton.addEventListener('click', () => this.selectPayment('card'));
+    this.initializeHandlers();
+  }
+
+  private initializeHandlers(): void {
+    this._onlineButton.addEventListener('click', () => this.selectPayment('online'));
     this._cashButton.addEventListener('click', () => this.selectPayment('cash'));
-    this._addressInput.addEventListener('input', () => this.validateForm());
-    this._form.addEventListener('submit', (e) => this.handleSubmit(e));
-
-    this._selectedPayment = null;
+    this._addressInput.addEventListener('input', () => this.validate());
+    this._form.addEventListener('submit', (event) => this.handleSubmit(event));
   }
 
-  protected _selectedPayment: TPayment | null = null;
-
-  // Выбор способа оплаты
-  selectPayment(payment: TPayment) {
-    this._selectedPayment = payment;
-    
-    // Обновляем стили кнопок
-    this._cardButton.classList.toggle('button_alt-active', payment === 'card');
-    this._cashButton.classList.toggle('button_alt-active', payment === 'cash');
-    
-    this.validateForm();
+  private selectPayment(method: 'online' | 'cash'): void {
+    this._selectedPayment = method;
+    this._onlineButton.classList.toggle('button_alt-active', method === 'online');
+    this._cashButton.classList.toggle('button_alt-active', method === 'cash');
+    this.validate();
   }
 
-  // Валидация формы
-  validateForm() {
-    const isAddressValid = this._addressInput.value.trim().length > 0;
-    const isPaymentValid = this._selectedPayment !== null;
+  protected validate(): boolean {
+    if (this.buyerModel) {
+      this.buyerModel.setData({
+        payment: this._selectedPayment,
+        address: this._addressInput.value.trim()
+      });
+      
+      const errors = this.buyerModel.validateOrder();
+      
+      if (errors.payment || errors.address) {
+        this.showErrors(errors.payment || errors.address || '');
+      } else {
+        this.clearErrors();
+      }
 
-    // Обновляем ошибки
-    this._errors.textContent = '';
-    if (!isPaymentValid) {
-      this._errors.textContent = 'Выберите способ оплаты';
-    } else if (!isAddressValid) {
-      this._errors.textContent = 'Введите адрес доставки';
+      const isValid = this.buyerModel.isValidOrder();
+      this.setSubmitButtonState(!isValid);
+      return isValid;
     }
 
-    // Активируем/деактивируем кнопку
-    this._submitButton.disabled = !(isAddressValid && isPaymentValid);
-
-    return isAddressValid && isPaymentValid;
+    return false;
   }
 
-  // Обработка отправки формы
-  protected handleSubmit(event: Event) {
+  private handleSubmit(event: Event): void {
     event.preventDefault();
     
-    if (this.validateForm() && this._selectedPayment && this.onSubmit) {
+    if (this.validate() && this.onSubmit) {
       this.onSubmit({
         payment: this._selectedPayment,
         address: this._addressInput.value.trim()
@@ -76,15 +74,26 @@ export class OrderForm {
     }
   }
 
-  render() {
-    // Сбрасываем форму при каждом рендере
-    this._selectedPayment = null;
-    this._cardButton.classList.remove('button_alt-active');
-    this._cashButton.classList.remove('button_alt-active');
-    this._addressInput.value = '';
-    this._errors.textContent = '';
-    this._submitButton.disabled = true;
+  setData(payment: string, address: string): void {
+    if (payment === 'online' || payment === 'cash') {
+      this.selectPayment(payment);
+    }
+    
+    if (address) {
+      this._addressInput.value = address;
+    }
+    
+    this.validate();
+  }
 
-    return this._container;
+  render(): this {
+    this._addressInput.value = '';
+    this._selectedPayment = '';
+    this._onlineButton.classList.remove('button_alt-active');
+    this._cashButton.classList.remove('button_alt-active');
+    this.clearErrors();
+    this.setSubmitButtonState(true);
+    
+    return this;
   }
 }

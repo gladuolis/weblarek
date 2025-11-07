@@ -13,7 +13,9 @@ export class PreviewCard {
 
   constructor(
     container: HTMLElement,
-    protected onAddToBasket?: (product: IProduct) => void
+    protected onAddToBasket?: (product: IProduct) => void,
+    protected onRemoveFromBasket?: (product: IProduct) => void,
+    protected isInBasket?: boolean
   ) {
     this._container = container;
     
@@ -27,7 +29,9 @@ export class PreviewCard {
 
     // Добавляем обработчик кнопки
     this._button.addEventListener('click', () => {
-      if (this.onAddToBasket && this._product && this._product.price !== null) {
+      if (this.isInBasket && this.onRemoveFromBasket && this._product) {
+        this.onRemoveFromBasket(this._product);
+      } else if (!this.isInBasket && this.onAddToBasket && this._product && this._product.price !== null) {
         this.onAddToBasket(this._product);
       }
     });
@@ -35,8 +39,9 @@ export class PreviewCard {
 
   protected _product?: IProduct;
 
-  render(data: IProduct) {
+  render(data: IProduct, isInBasket: boolean = false) {
     this._product = data;
+    this.isInBasket = isInBasket;
     
     // Заполняем карточку данными
     this._title.textContent = data.title;
@@ -50,10 +55,13 @@ export class PreviewCard {
     const categoryClass = categoryMap[data.category as keyof typeof categoryMap];
     this._category.className = `card__category ${categoryClass}`;
 
-    // Блокируем кнопку если товар недоступен
+    // Настраиваем кнопку в зависимости от состояния
     if (data.price === null) {
       this._button.disabled = true;
       this._button.textContent = 'Недоступно';
+    } else if (isInBasket) {
+      this._button.disabled = false;
+      this._button.textContent = 'Удалить из корзины';
     } else {
       this._button.disabled = false;
       this._button.textContent = 'В корзину';

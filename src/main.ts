@@ -7,21 +7,26 @@ import { Api } from './components/base/Api';
 import { Modal } from './components/View/Modal';
 import { AppPresenter } from './components/Presenter/AppPresenter';
 import { API_URL } from './utils/constants';
+import { EventEmitter } from './components/base/Events';
 
 // Находим контейнеры
 const gallery = document.querySelector('.gallery') as HTMLElement;
 const modalContainer = document.querySelector('#modal-container') as HTMLElement;
 const basketButton = document.querySelector('.header__basket') as HTMLElement;
 
-// Создаем все необходимые экземпляры
-const productModel = new ProductModel();
-const cartModel = new CartModel();
-const buyerModel = new BuyerModel();
+// Создаем единый EventEmitter для всего приложения
+const events = new EventEmitter();
+
+// Создаем модели с передачей единого EventEmitter
+const productModel = new ProductModel(events);
+const cartModel = new CartModel(events);
+const buyerModel = new BuyerModel(events);
+
 const baseApi = new Api(API_URL);
 const api = new WebLarekAPI(baseApi);
 const modal = new Modal(modalContainer);
 
-// Создаем презентер, который свяжет всё вместе
+// Создаем презентер
 const app = new AppPresenter(
   productModel,
   cartModel,
@@ -29,5 +34,6 @@ const app = new AppPresenter(
   api,
   modal,
   gallery,
-  basketButton
+  basketButton,
+  events
 );

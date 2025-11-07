@@ -54,3 +54,17 @@ export interface IValidationErrors {
   phone?: string;
   address?: string;
 }
+
+// ДОБАВЛЯЕМ ИНТЕРФЕЙСЫ ДЛЯ ФОРМ
+export interface IForm {
+  setData?(...args: any[]): void;
+  render(): void;
+}
+
+export interface IOrderForm extends IForm {
+  setData(payment: string, address: string): void;
+}
+
+export interface IContactsForm extends IForm {
+  setData(email: string, phone: string): void;
+}

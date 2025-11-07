@@ -1,56 +1,61 @@
-export class ContactsForm {
-  protected _container: HTMLElement;
-  protected _form: HTMLFormElement;
-  protected _emailInput: HTMLInputElement;
-  protected _phoneInput: HTMLInputElement;
-  protected _submitButton: HTMLButtonElement;
-  protected _errors: HTMLElement;
+import { Form } from './Form';
+import { IContactsForm } from '../../types';
+
+interface ContactsFormData {
+  email: string;
+  phone: string;
+}
+
+export class ContactsForm extends Form<ContactsFormData> implements IContactsForm {
+  private _emailInput: HTMLInputElement;
+  private _phoneInput: HTMLInputElement;
 
   constructor(
     container: HTMLElement,
-    protected onSubmit?: (data: { email: string; phone: string }) => void
+    private buyerModel: any,
+    protected onSubmit?: (data: ContactsFormData) => void
   ) {
-    this._container = container;
+    super(container);
     
-    // Находим элементы
-    this._form = this._container.querySelector('form') as HTMLFormElement;
-    this._emailInput = this._container.querySelector('input[name="email"]') as HTMLInputElement;
-    this._phoneInput = this._container.querySelector('input[name="phone"]') as HTMLInputElement;
-    this._submitButton = this._container.querySelector('button[type="submit"]') as HTMLButtonElement;
-    this._errors = this._container.querySelector('.form__errors') as HTMLElement;
+    this._emailInput = this.container.querySelector('input[name="email"]') as HTMLInputElement;
+    this._phoneInput = this.container.querySelector('input[name="phone"]') as HTMLInputElement;
 
-    // Обработчики событий
-    this._emailInput.addEventListener('input', () => this.validateForm());
-    this._phoneInput.addEventListener('input', () => this.validateForm());
-    this._form.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.initializeHandlers();
   }
 
-  // Валидация формы
-  validateForm() {
-    const isEmailValid = this._emailInput.value.trim().length > 0;
-    const isPhoneValid = this._phoneInput.value.trim().length > 0;
+  private initializeHandlers(): void {
+    this._emailInput.addEventListener('input', () => this.validate());
+    this._phoneInput.addEventListener('input', () => this.validate());
+    this._form.addEventListener('submit', (event) => this.handleSubmit(event));
+  }
 
-    // Обновляем ошибки
-    this._errors.textContent = '';
-    if (!isEmailValid && !isPhoneValid) {
-      this._errors.textContent = 'Заполните email и телефон';
-    } else if (!isEmailValid) {
-      this._errors.textContent = 'Введите email';
-    } else if (!isPhoneValid) {
-      this._errors.textContent = 'Введите телефон';
+  protected validate(): boolean {
+    if (this.buyerModel) {
+      this.buyerModel.setData({
+        email: this._emailInput.value.trim(),
+        phone: this._phoneInput.value.trim()
+      });
+      
+      const errors = this.buyerModel.validateContacts();
+      
+      if (errors.email || errors.phone) {
+        this.showErrors(errors.email || errors.phone || '');
+      } else {
+        this.clearErrors();
+      }
+
+      const isValid = this.buyerModel.isValidContacts();
+      this.setSubmitButtonState(!isValid);
+      return isValid;
     }
 
-    // Активируем/деактивируем кнопку
-    this._submitButton.disabled = !(isEmailValid && isPhoneValid);
-
-    return isEmailValid && isPhoneValid;
+    return false;
   }
 
-  // Обработка отправки формы
-  protected handleSubmit(event: Event) {
+  private handleSubmit(event: Event): void {
     event.preventDefault();
     
-    if (this.validateForm() && this.onSubmit) {
+    if (this.validate() && this.onSubmit) {
       this.onSubmit({
         email: this._emailInput.value.trim(),
         phone: this._phoneInput.value.trim()
@@ -58,13 +63,24 @@ export class ContactsForm {
     }
   }
 
-  render() {
-    // Сбрасываем форму при каждом рендере
+  setData(email: string, phone: string): void {
+    if (email) {
+      this._emailInput.value = email;
+    }
+    
+    if (phone) {
+      this._phoneInput.value = phone;
+    }
+    
+    this.validate();
+  }
+
+  render(): this {
     this._emailInput.value = '';
     this._phoneInput.value = '';
-    this._errors.textContent = '';
-    this._submitButton.disabled = true;
-
-    return this._container;
+    this.clearErrors();
+    this.setSubmitButtonState(true);
+    
+    return this;
   }
 }

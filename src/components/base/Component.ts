@@ -1,26 +1,23 @@
-/**
- * Базовый компонент
- */
-export abstract class Component<T> {
-    protected constructor(protected readonly container: HTMLElement) {
-        // Учитывайте что код в конструкторе исполняется ДО всех объявлений в дочернем классе
-    }
+export class Component<T> {
+  protected container: HTMLElement;
 
-    // Инструментарий для работы с DOM в дочерних компонентах
+  constructor(container: HTMLElement) {
+    this.container = container;
+  }
 
-    // Установить изображение с альтернативным текстом
-    protected setImage(element: HTMLImageElement, src: string, alt?: string) {
-        if (element) {
-            element.src = src;
-            if (alt) {
-                element.alt = alt;
-            }
-        }
-    }
+  setText(element: HTMLElement, text: string): void {
+    if (element) element.textContent = text;
+  }
 
-    // Вернуть корневой DOM-элемент
-    render(data?: Partial<T>): HTMLElement {
-        Object.assign(this as object, data ?? {});
-        return this.container;
+  setImage(element: HTMLImageElement, src: string, alt: string): void {
+    if (element) {
+      element.src = src;
+      element.alt = alt;
     }
+  }
+
+  render(data?: Partial<T>): HTMLElement {
+    Object.assign(this as object, data);
+    return this.container;
+  }
 }
