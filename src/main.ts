@@ -26,7 +26,7 @@ const baseApi = new Api(API_URL);
 const api = new WebLarekAPI(baseApi);
 const modal = new Modal(modalContainer);
 
-// Создаем презентер
+// Создаем презентер 
 const app = new AppPresenter(
   productModel,
   cartModel,

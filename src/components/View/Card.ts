@@ -1,16 +1,24 @@
-import { Component } from '../base/Component';
+// View/Card.ts
 import { IProduct } from '../../types';
 import { categoryMap } from '../../utils/constants';
 import { CDN_URL } from '../../utils/constants';
 
-export class Card<T> extends Component<T> {
+export abstract class Card {
+  protected container: HTMLElement;
   protected _title: HTMLElement;
   protected _image: HTMLImageElement;
   protected _category: HTMLElement;
   protected _price: HTMLElement;
+  protected _product?: IProduct;
 
   constructor(container: HTMLElement) {
-    super(container);
+    if (!container) {
+      console.error('❌ Card: container is null or undefined');
+      this.container = document.createElement('div');
+      return;
+    }
+
+    this.container = container as HTMLElement;
     
     this._title = this.container.querySelector('.card__title') as HTMLElement;
     this._image = this.container.querySelector('.card__image') as HTMLImageElement;
@@ -18,27 +26,39 @@ export class Card<T> extends Component<T> {
     this._price = this.container.querySelector('.card__price') as HTMLElement;
   }
 
-  set title(value: string) {
-    if (this._title) this.setText(this._title, value);
+  protected renderBase(product: IProduct): void {
+    this.setTitle(product.title);
+    this.setImage(product.image, product.title);
+    this.setCategory(product.category);
+    this.setPrice(product.price);
   }
 
-  set image(value: string) {
-    if (this._image) this.setImage(this._image, CDN_URL + value, value); // ← исправлено
+  protected setTitle(title: string): void {
+    if (this._title) {
+      this._title.textContent = title;
+    }
   }
 
-  set category(value: string) {
+  protected setImage(src: string, alt: string): void {
+    if (this._image) {
+      this._image.src = `${CDN_URL}/${src}`;
+      this._image.alt = alt;
+    }
+  }
+
+  protected setCategory(category: string): void {
     if (this._category) {
-      this.setText(this._category, value);
-      const categoryClass = categoryMap[value as keyof typeof categoryMap];
-      if (categoryClass) {
-        this._category.className = `card__category ${categoryClass}`;
-      }
+      this._category.textContent = category;
+      const categoryClass = categoryMap[category as keyof typeof categoryMap];
+      this._category.className = `card__category ${categoryClass}`;
     }
   }
 
-  set price(value: number | null) {
+  protected setPrice(price: number | null): void {
     if (this._price) {
-      this.setText(this._price, value === null ? 'Бесценно' : `${value} синапсов`);
+      this._price.textContent = price ? `${price} синапсов` : 'Бесценно';
     }
   }
+
+  abstract render(data: IProduct): HTMLElement;
 }
