@@ -5,6 +5,11 @@ export class Component<T> {
     this.container = container;
   }
 
+  // Публичный геттер для доступа к container
+  public getContainer(): HTMLElement {
+    return this.container;
+  }
+
   setText(element: HTMLElement, text: string): void {
     if (element) element.textContent = text;
   }

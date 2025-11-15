@@ -1,8 +1,14 @@
 // View/BasketView.ts
 import { IProduct } from '../../types'; 
+import { Component } from '../base/Component';
 
-export class BasketView { 
-  protected _container: HTMLElement; 
+// Создаем интерфейс для данных BasketView
+interface IBasketData {
+  basketCards: HTMLElement[];
+  total: number;
+}
+
+export class BasketView extends Component<IBasketData> { 
   protected _list: HTMLElement; 
   protected _total: HTMLElement; 
   protected _button: HTMLButtonElement; 
@@ -11,11 +17,11 @@ export class BasketView {
     container: HTMLElement, 
     protected onCheckout?: () => void
   ) { 
-    this._container = container; 
+    super(container);
     
-    this._list = this._container.querySelector('.basket__list') as HTMLElement; 
-    this._total = this._container.querySelector('.basket__price') as HTMLElement; 
-    this._button = this._container.querySelector('.basket__button') as HTMLButtonElement; 
+    this._list = this.container.querySelector('.basket__list') as HTMLElement; 
+    this._total = this.container.querySelector('.basket__price') as HTMLElement; 
+    this._button = this.container.querySelector('.basket__button') as HTMLButtonElement; 
 
     if (this._button) { 
       this._button.addEventListener('click', () => { 
@@ -26,28 +32,39 @@ export class BasketView {
     } 
   } 
 
-  render(basketCards: HTMLElement[], total: number): HTMLElement { 
+  private createEmptyMessage(): HTMLElement {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'basket__empty';
+    emptyMessage.style.textAlign = 'center'; 
+    emptyMessage.style.padding = '20px'; 
+    
+    this.setText(emptyMessage, 'Корзина пуста');
+    
+    return emptyMessage;
+  }
+
+  render(data?: Partial<IBasketData>): HTMLElement { 
+    if (!data) return this.container;
+    
+    const { basketCards, total } = data;
+    
+    if (!basketCards || total === undefined) return this.container;
+
     this._list.innerHTML = ''; 
 
     if (basketCards.length === 0) { 
-      const emptyMessage = document.createElement('div'); 
-      emptyMessage.className = 'basket__empty'; 
-      emptyMessage.textContent = 'Корзина пуста'; 
-      emptyMessage.style.textAlign = 'center'; 
-      emptyMessage.style.padding = '20px'; 
-      this._list.appendChild(emptyMessage); 
-      
+      this._list.appendChild(this.createEmptyMessage()); 
       this._button.disabled = true; 
-      this._total.textContent = '0 синапсов'; 
+      this.setText(this._total, '0 синапсов');
     } else { 
       this._button.disabled = false; 
-      this._total.textContent = `${total} синапсов`; 
+      this.setText(this._total, `${total} синапсов`);
 
       basketCards.forEach(card => { 
         this._list.appendChild(card); 
       }); 
     } 
 
-    return this._container; 
+    return this.container; 
   } 
-} 
+}

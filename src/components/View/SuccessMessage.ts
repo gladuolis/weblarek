@@ -30,8 +30,15 @@ export class SuccessMessage extends Component<{ total: number }> {
 
   setTotal(total: number): void {
     if (this._description) {
-      this._description.textContent = `Списано ${total} синапсов`;
+      this.setText(this._description, `Списано ${total} синапсов`);
       console.log('✅ Success message total set to:', total);
     }
+  }
+
+  render(data?: { total: number }): HTMLElement {
+    if (data && data.total !== undefined) {
+      this.setTotal(data.total);
+    }
+    return this.container;
   }
 }

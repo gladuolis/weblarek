@@ -5,44 +5,63 @@ import { Card } from './Card';
 export class PreviewCard extends Card { 
   protected _description: HTMLElement;
   protected _button: HTMLButtonElement;
+  protected _isInBasket: boolean = false;
 
   constructor( 
     container: HTMLElement, 
     protected onAddToBasket?: (product: IProduct) => void, 
-    protected onRemoveFromBasket?: (product: IProduct) => void, 
-    protected isInBasket?: boolean 
+    protected onRemoveFromBasket?: (product: IProduct) => void
   ) { 
     super(container);
     this._description = this.container.querySelector('.card__text') as HTMLElement;
     this._button = this.container.querySelector('.card__button') as HTMLButtonElement;
 
-    this._button.addEventListener('click', () => { 
-      if (this.isInBasket && this.onRemoveFromBasket && this._product) { 
-        this.onRemoveFromBasket(this._product); 
-      } else if (!this.isInBasket && this.onAddToBasket && this._product && this._product.price !== null) { 
-        this.onAddToBasket(this._product); 
-      } 
-    }); 
+    if (this._button) {
+      this._button.addEventListener('click', () => { 
+        if (this._isInBasket && this.onRemoveFromBasket && this._product) { 
+          this.onRemoveFromBasket(this._product); 
+        } else if (!this._isInBasket && this.onAddToBasket && this._product && this._product.price !== null) { 
+          this.onAddToBasket(this._product); 
+        } 
+      }); 
+    }
   } 
 
-  render(data: IProduct, isInBasket: boolean = false): HTMLElement { 
-    this._product = data; 
-    this.isInBasket = isInBasket; 
-    
-    this.renderBase(data);
-    this._description.textContent = data.description;
+  protected setDescription(description: string): void {
+    this.setText(this._description, description);
+  }
 
-    if (data.price === null) { 
+  protected setButtonText(text: string): void {
+    this.setText(this._button, text);
+  }
+
+  protected updateButtonState(): void {
+    if (!this._product) return;
+
+    if (this._product.price === null) { 
       this._button.disabled = true; 
-      this._button.textContent = 'Недоступно'; 
-    } else if (isInBasket) { 
+      this.setButtonText('Недоступно'); 
+    } else if (this._isInBasket) { 
       this._button.disabled = false; 
-      this._button.textContent = 'Удалить из корзины'; 
+      this.setButtonText('Удалить из корзины'); 
     } else { 
       this._button.disabled = false; 
-      this._button.textContent = 'В корзину'; 
+      this.setButtonText('В корзину'); 
     } 
+  }
+
+  setBasketState(isInBasket: boolean): void {
+    this._isInBasket = isInBasket;
+    this.updateButtonState();
+  }
+
+  render(data: IProduct, index?: number): HTMLElement { 
+    this._product = data; 
+    
+    this.renderBase(data);
+    this.setDescription(data.description);
+    this.updateButtonState(); 
 
     return this.container; 
   } 
-} 
+}

@@ -16,7 +16,7 @@ export class BuyerModel {
     if (data.phone !== undefined) this._phone = data.phone;  
     if (data.address !== undefined) this._address = data.address;  
       
-    this.events.emit('buyer:changed', this.getData());  
+    this.events.emit('buyer:changed', this.getData() || undefined);  
   }  
 
   getData(): IBuyer | null {  
@@ -62,6 +62,6 @@ export class BuyerModel {
     this._email = '';  
     this._phone = '';  
     this._address = '';  
-    this.events.emit('buyer:changed', null);  
+    this.events.emit('buyer:changed', undefined);  
   }  
 }  

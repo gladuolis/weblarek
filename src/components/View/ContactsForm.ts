@@ -1,70 +1,70 @@
 // View/ContactsForm.ts
-import { Form } from './Form'; 
-import { IContactsForm } from '../../types'; 
+import { Component } from '../base/Component';
+import { BuyerModel } from '../models/BuyerModel';
 
-interface ContactsFormData { 
-  email: string; 
-  phone: string; 
-} 
+export class ContactsForm extends Component<{ email: string; phone: string }> {
+    private emailInput: HTMLInputElement;
+    private phoneInput: HTMLInputElement;
+    private submitButton: HTMLButtonElement;
+    private errorElement: HTMLElement;
 
-export class ContactsForm extends Form<ContactsFormData> implements IContactsForm { 
-  private _emailInput: HTMLInputElement; 
-  private _phoneInput: HTMLInputElement; 
+    constructor(
+        container: HTMLElement,
+        protected buyerModel: BuyerModel,
+        protected onSubmit?: (data: { email: string; phone: string }) => void
+    ) {
+        super(container);
+        
+        this.emailInput = this.container.querySelector('input[name="email"]') as HTMLInputElement;
+        this.phoneInput = this.container.querySelector('input[name="phone"]') as HTMLInputElement;
+        this.submitButton = this.container.querySelector('button[type="submit"]') as HTMLButtonElement;
+        this.errorElement = this.container.querySelector('.form__errors') as HTMLElement;
 
-  constructor( 
-    container: HTMLElement, 
-    private buyerModel: any, 
-    protected onSubmit?: (data: ContactsFormData) => void 
-  ) { 
-    super(container); 
-    
-    this._emailInput = this.container.querySelector('input[name="email"]') as HTMLInputElement; 
-    this._phoneInput = this.container.querySelector('input[name="phone"]') as HTMLInputElement; 
+        this.emailInput.addEventListener('input', () => this.updateSubmitButton());
+        this.phoneInput.addEventListener('input', () => this.updateSubmitButton());
 
-    this._emailInput.addEventListener('input', () => this.validate()); 
-    this._phoneInput.addEventListener('input', () => this.validate()); 
-  } 
+        const form = this.container.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleSubmit();
+            });
+        }
 
-  protected validate(): boolean { 
-    this.buyerModel.setData({ 
-      email: this._emailInput.value.trim(), 
-      phone: this._phoneInput.value.trim() 
-    }); 
-    
-    const errors = this.buyerModel.validate(); 
-    const contactErrors: string[] = [];
-    
-    if (errors.email) contactErrors.push(errors.email);
-    if (errors.phone) contactErrors.push(errors.phone);
-    
-    if (contactErrors.length > 0) { 
-      this.showErrors(contactErrors.join(', ')); 
-    } else { 
-      this.clearErrors(); 
-    } 
+        this.updateSubmitButton();
+    }
 
-    const isValid = !errors.email && !errors.phone;
-    this.setSubmitButtonState(!isValid); 
-    return isValid; 
-  } 
+    private handleSubmit() {
+        if (this.emailInput.value.trim() && this.phoneInput.value.trim() && this.onSubmit) {
+            this.onSubmit({
+                email: this.emailInput.value.trim(),
+                phone: this.phoneInput.value.trim()
+            });
+        }
+    }
 
-  protected getFormData(): ContactsFormData {
-    return {
-      email: this._emailInput.value.trim(),
-      phone: this._phoneInput.value.trim()
-    };
-  }
+    private updateSubmitButton() {
+        const canSubmit = this.emailInput.value.trim() !== '' && this.phoneInput.value.trim() !== '';
+        if (this.submitButton) {
+            this.submitButton.disabled = !canSubmit;
+        }
+    }
 
-  setData(email: string, phone: string): void { 
-    this._emailInput.value = email || ''; 
-    this._phoneInput.value = phone || ''; 
-    this.validate(); 
-  } 
+    protected showErrors(message: string): void {
+        if (this.errorElement) {
+            this.setText(this.errorElement, message);
+            this.errorElement.style.display = message ? 'block' : 'none';
+        }
+    }
 
-  render(): this { 
-    super.render();
-    this._emailInput.value = ''; 
-    this._phoneInput.value = ''; 
-    return this; 
-  } 
-} 
+    setData(email: string, phone: string) {
+        this.emailInput.value = email;
+        this.phoneInput.value = phone;
+        this.updateSubmitButton();
+    }
+
+    render(): HTMLElement {
+        this.updateSubmitButton();
+        return this.container;
+    }
+}
